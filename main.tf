@@ -5,8 +5,8 @@
 # }
 
 resource "aws_vpc" "main" {
-  cidr_block = "172.17.0.0/16"
-  enable_dns_support = true
+  cidr_block           = "172.17.0.0/16"
+  enable_dns_support   = true
   enable_dns_hostnames = true
 }
 
@@ -75,7 +75,7 @@ resource "aws_vpc_endpoint" "s3" {
   service_name      = "com.amazonaws.${var.aws_region}.s3"
   vpc_endpoint_type = "Gateway"
   route_table_ids   = [aws_route_table.private[0].id]
-  policy            =   jsonencode({ # data.aws_iam_policy_document.s3_ecr_access.json
+  policy = jsonencode({ # data.aws_iam_policy_document.s3_ecr_access.json
     "Version" : "2012-10-17",
     "Statement" : [
       {
