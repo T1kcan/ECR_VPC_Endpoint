@@ -12,3 +12,9 @@ variable "s3_bucket_name" {
 variable "aws_region" {
   default = "us-east-1"
 }
+
+variable "tags" {
+  description = "Key/Value pairs to assign to the default tags"
+  type        = map(string)
+  default     = null
+}
