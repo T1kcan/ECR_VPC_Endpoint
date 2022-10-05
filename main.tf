@@ -173,7 +173,7 @@ data "aws_iam_policy_document" "s3_ecr_access" {
 resource "aws_iam_policy" "example" {
   name   = "example_policy"
   path   = "/"
-  policy = "${data.aws_iam_policy_document.s3_ecr_access.json}"
+  policy = data.aws_iam_policy_document.s3_ecr_access.json
 }
 
 resource "aws_security_group" "ecs_task" {
