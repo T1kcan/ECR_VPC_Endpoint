@@ -75,7 +75,7 @@ resource "aws_vpc_endpoint" "s3" {
   service_name      = "com.amazonaws.${var.aws_region}.s3"
   vpc_endpoint_type = "Gateway"
   route_table_ids   = [aws_route_table.private[0].id]
-  policy = jsonencode({ # data.aws_iam_policy_document.s3_ecr_access.json
+  policy = jsonencode({ 
     "Version" : "2012-10-17",
     "Statement" : [
       {
@@ -97,7 +97,6 @@ resource "aws_vpc_endpoint" "s3" {
 
 }
 
-
 resource "aws_vpc_endpoint" "ecr-dkr-endpoint" {
   vpc_id              = aws_vpc.main.id
   private_dns_enabled = true
@@ -116,25 +115,7 @@ resource "aws_vpc_endpoint" "ecr-api-endpoint" {
   security_group_ids  = [aws_security_group.ecs_task.id]
   subnet_ids          = aws_subnet.private.*.id
 }
-resource "aws_vpc_endpoint" "ecs-agent" {
-  vpc_id              = aws_vpc.main.id
-  service_name        = "com.amazonaws.${var.aws_region}.ecs-agent"
-  vpc_endpoint_type   = "Interface"
-  private_dns_enabled = true
-  security_group_ids  = [aws_security_group.ecs_task.id]
-  subnet_ids          = aws_subnet.private.*.id
 
-
-}
-resource "aws_vpc_endpoint" "ecs-telemetry" {
-  vpc_id              = aws_vpc.main.id
-  service_name        = "com.amazonaws.${var.aws_region}.ecs-telemetry"
-  vpc_endpoint_type   = "Interface"
-  private_dns_enabled = true
-  security_group_ids  = [aws_security_group.ecs_task.id]
-  subnet_ids          = aws_subnet.private.*.id
-
-}
 
 # //////////////////////////////
 # DATA
@@ -193,7 +174,7 @@ data "aws_iam_policy_document" "s3_ecr_access" {
 resource "aws_iam_policy" "example1" {
   name   = "example1_policy"
   path   = "/"
-  policy = data.aws_iam_policy_document.s3_ecr_access.json #"${data.aws_iam_policy_document.s3_ecr_access.json}" 
+  policy = data.aws_iam_policy_document.s3_ecr_access.json
 }
 
 resource "aws_security_group" "ecs_task" {
