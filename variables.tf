@@ -6,8 +6,8 @@ variable "az_count" {
 
 variable "s3_bucket_name" {
   description = "Unique S3 bucket name"
-  type    = string
-  default = "smtg_unique1011"
+  type        = string
+  default     = "smtg_unique1011"
 }
 
 variable "aws_region" {
