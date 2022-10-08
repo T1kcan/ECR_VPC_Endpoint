@@ -1,11 +1,5 @@
-# network.tf
-
-# Fetch AZs in the current region
-# data "aws_availability_zones" "available" {
-# }
-
 resource "aws_vpc" "main" {
-  cidr_block           = "172.17.0.0/16"
+  cidr_block           = var.cidr_block
   enable_dns_support   = true
   enable_dns_hostnames = true
 }
@@ -94,7 +88,6 @@ resource "aws_vpc_endpoint" "s3" {
       }
     ]
   })
-
 }
 
 resource "aws_vpc_endpoint" "ecr-dkr-endpoint" {
@@ -104,7 +97,6 @@ resource "aws_vpc_endpoint" "ecr-dkr-endpoint" {
   vpc_endpoint_type   = "Interface"
   security_group_ids  = [aws_security_group.ecs_task.id]
   subnet_ids          = aws_subnet.private.*.id
-
 }
 
 resource "aws_vpc_endpoint" "ecr-api-endpoint" {
@@ -116,10 +108,10 @@ resource "aws_vpc_endpoint" "ecr-api-endpoint" {
   subnet_ids          = aws_subnet.private.*.id
 }
 
-
 # //////////////////////////////
 # DATA
 # //////////////////////////////
+
 data "aws_availability_zones" "available" {
   state = "available"
 }
