@@ -1,4 +1,4 @@
-module sikv3-aws-security-groups
+module ecr-spike-private-connection
 
 go 1.18
 

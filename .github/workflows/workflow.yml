@@ -1,4 +1,4 @@
-name: Terraform module for Security Groups
+name: Terraform module for VPC Endpoint Interface
 on:
   push: {}
 

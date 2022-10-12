@@ -46,48 +46,58 @@ resource "aws_nat_gateway" "gw" {
   allocation_id = element(aws_eip.gw.*.id, count.index)
 }
 
-# Create a new route table for the private subnets, make it route non-local traffic through the NAT gateway to the internet
-resource "aws_route_table" "private" {
-  count  = var.az_count
-  vpc_id = aws_vpc.main.id
+# Create IAM Role for EC2 instance to access ECR Repository 
+resource "aws_iam_role" "ec2ecrfullaccess" {
+  name                = "ecr_ec2_permission"
+  managed_policy_arns = ["arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryFullAccess"]
+  # Terraform's "jsonencode" function converts a
+  # Terraform expression result to valid JSON syntax.
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Sid    = ""
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        }
+      },
+    ]
+  })
+}
 
-  route {
-    cidr_block     = "0.0.0.0/0"
-    nat_gateway_id = element(aws_nat_gateway.gw.*.id, count.index)
+resource "aws_iam_instance_profile" "ec2_profile" {
+  name = "ecr-ec2_profile"
+  role = aws_iam_role.ec2ecrfullaccess.name
+}
+
+resource "aws_instance" "bastion" {
+  ami                    = var.bastion_ami
+  instance_type          = var.ec2_type
+  subnet_id              = aws_subnet.public[0].id
+  vpc_security_group_ids = [aws_security_group.ecs_task.id]
+  key_name               = var.keyname
+  source_dest_check      = false
+  tags = {
+    "Name" = "Bastion Host"
   }
 }
 
-# Explicitly associate the newly created route tables to the private subnets (so they don't default to the main route table)
-resource "aws_route_table_association" "private" {
-  count          = var.az_count
-  subnet_id      = element(aws_subnet.private.*.id, count.index)
-  route_table_id = element(aws_route_table.private.*.id, count.index)
+resource "aws_instance" "test" {
+  ami                    = var.test_ami # aws cli & docker included ami
+  instance_type          = var.ec2_type
+  subnet_id              = aws_subnet.private[0].id
+  vpc_security_group_ids = [aws_security_group.ecs_task.id]
+  key_name               = var.keyname
+  tags = {
+    "Name" = "Test Instance"
+  }
+  iam_instance_profile = aws_iam_instance_profile.ec2_profile.name
 }
 
-resource "aws_vpc_endpoint" "s3" {
-  vpc_id            = aws_vpc.main.id
-  service_name      = "com.amazonaws.${var.aws_region}.s3"
-  vpc_endpoint_type = "Gateway"
-  route_table_ids   = [aws_route_table.private[0].id]
-  policy = jsonencode({
-    "Version" : "2012-10-17",
-    "Statement" : [
-      {
-        "Sid" : "AllowAll",
-        "Effect" : "Allow",
-        "Principal" : {
-          "AWS" : "*"
-        },
-        "Action" : [
-          "dynamodb:*",
-          "s3:ListAllMyBuckets",
-          "s3:GetBucketLocation",
-          "s3:ListBucket",
-        ],
-        "Resource" : "*"
-      }
-    ]
-  })
+output "ssh-connection" {
+  value = "ssh -i ~/.ssh/${var.keyname}.pem ec2-user@${aws_instance.bastion.public_ip}"
 }
 
 resource "aws_vpc_endpoint" "ecr-dkr-endpoint" {
@@ -116,59 +126,7 @@ data "aws_availability_zones" "available" {
   state = "available"
 }
 
-data "aws_iam_policy_document" "s3_ecr_access" {
-  statement {
-    sid = "1"
-
-    actions = [
-      "s3:ListAllMyBuckets",
-      "s3:GetBucketLocation",
-    ]
-
-    resources = [
-      "arn:aws:s3:::*",
-    ]
-  }
-
-  statement {
-    actions = [
-      "s3:ListBucket",
-    ]
-
-    resources = [
-      "arn:aws:s3:::${var.s3_bucket_name}",
-    ]
-
-    condition {
-      test     = "StringLike"
-      variable = "s3:prefix"
-
-      values = [
-        "",
-        "home/",
-        "home/&{aws:username}/",
-      ]
-    }
-  }
-
-  statement {
-    actions = [
-      "s3:*",
-    ]
-
-    resources = [
-      "arn:aws:s3:::${var.s3_bucket_name}/home/&{aws:username}",
-      "arn:aws:s3:::${var.s3_bucket_name}/home/&{aws:username}/*",
-    ]
-  }
-}
-
-resource "aws_iam_policy" "example1" {
-  name   = "example1_policy"
-  path   = "/"
-  policy = data.aws_iam_policy_document.s3_ecr_access.json
-}
-
+# Create Security Group to associate with the endpoint network interface.
 resource "aws_security_group" "ecs_task" {
   name        = "ecs_task"
   description = "ecs_task"
@@ -178,15 +136,8 @@ resource "aws_security_group" "ecs_task" {
   vpc_id = aws_vpc.main.id
 
   ingress {
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  ingress {
-    from_port   = 22
-    to_port     = 22
+    from_port   = 0
+    to_port     = 65535
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
